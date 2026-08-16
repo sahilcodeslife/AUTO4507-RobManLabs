@@ -1,0 +1,24 @@
+# virtual environment
+.venv/
+venv/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# generated artefacts (result.png is tracked - README.md embeds it)
+test.png
+shapes.csv
+
+# The dataset is 25,025 files but only 23 unique images: every class folder
+# holds 1001 byte-identical copies of one PNG. Only 1.png per class is tracked,
+# which is exactly what verify.py's regression suite reads - the other 25,000
+# duplicates would bloat the repo for no benefit.
+data/*/*.png
+!data/*/1.png
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
