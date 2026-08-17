@@ -133,6 +133,7 @@ class App(ctk.CTk):
                      "{:.0f}%", scale=0.01)
 
         for text, cmd in (("Load image...", self.load_image),
+                          ("Capture from arm camera", self.capture_from_camera),
                           ("Save annotated result", self.save_result),
                           ("Export results to CSV", self.export_csv),
                           ("Reset to defaults", self.reset)):
@@ -333,6 +334,16 @@ class App(ctk.CTk):
         self.title(f"Shape Detection - {Path(path).name}")
         self.refresh()
 
+    def capture_from_camera(self) -> None:
+        try:
+            self.bgr = P.fetch_frame()
+        except Exception as exc:
+            messagebox.showerror("Could not reach camera", str(exc))
+            return
+        self.image_path = P.CAMERA_URL
+        self.title("Shape Detection - live camera capture")
+        self.refresh()
+
     def save_result(self) -> None:
         if not self.stages:
             return
@@ -373,7 +384,7 @@ class App(ctk.CTk):
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     selftest = "--selftest" in sys.argv
-    path = args[0] if args else "test.webp"
+    path = args[0] if args else "test.png"
     if not Path(path).exists():
         print(f"Image not found: {path}")
         raise SystemExit(1)

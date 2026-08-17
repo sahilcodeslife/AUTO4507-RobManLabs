@@ -59,7 +59,7 @@ fast binary install on Apple Silicon — no Rosetta, no compiling.
 ## 4. Run it
 
 ```bash
-# Verify everything works - 13 checks
+# Verify everything works - 13 check
 python verify.py
 
 # Command line: print each shape and its centre point

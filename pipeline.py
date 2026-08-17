@@ -27,6 +27,29 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import requests
+
+# --------------------------------------------------------------------------
+# camera
+# --------------------------------------------------------------------------
+
+# The UR5e wrist camera serves one JPEG per GET request at a fixed URL - no
+# streaming handshake, no auth. That's a different device on the network than
+# the arm itself (the UR5e controller listens on 192.168.0.7:30002 for
+# URScript commands); this URL only talks to the camera.
+CAMERA_URL = "http://192.168.0.7:4242/current.jpg?type=color"
+
+
+def fetch_frame(url: str = CAMERA_URL, timeout: float = 5.0) -> np.ndarray:
+    """GET one JPEG frame from the camera and decode it to BGR (OpenCV's format)."""
+    resp = requests.get(url, stream=True, timeout=timeout)
+    resp.raise_for_status()
+    data = np.frombuffer(resp.content, dtype=np.uint8)
+    img = cv2.imdecode(data, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError(f"Camera responded but the image could not be decoded: {url}")
+    return img
+
 
 # --------------------------------------------------------------------------
 # parameters
@@ -413,17 +436,28 @@ def main() -> None:
     import argparse
 
     ap = argparse.ArgumentParser(description="Detect shapes and their centre points.")
-    ap.add_argument("image", nargs="?", default="test.webp")
+    ap.add_argument("image", nargs="?", default="test.png",
+                     help="Image file to process. Ignored if --camera is set.")
+    ap.add_argument("--camera", action="store_true",
+                     help="Fetch a live frame from the arm's wrist camera instead "
+                          "of reading a file.")
+    ap.add_argument("--camera-url",
+                     help=f"Override the camera's snapshot URL (default: {CAMERA_URL}).")
     ap.add_argument("--mode", choices=("chroma", "gray"), default="chroma")
     ap.add_argument("--save", default="result.png")
     args = ap.parse_args()
 
     from classify import classify
 
-    bgr = load_image(args.image)
+    if args.camera or args.camera_url:
+        source = args.camera_url or CAMERA_URL
+        bgr = fetch_frame(source)
+    else:
+        source = args.image
+        bgr = load_image(source)
     stages, shapes = run(bgr, Params(mode=args.mode), classifier=classify)
 
-    print(f"{args.image}: {bgr.shape[1]}x{bgr.shape[0]}, {len(shapes)} shapes\n")
+    print(f"{source}: {bgr.shape[1]}x{bgr.shape[0]}, {len(shapes)} shapes\n")
     header = f"{'type':<12}{'centre':>12}{'conf':>7}{'verts':>7}{'solid':>8}{'circ':>7}{'aspect':>8}"
     print(header)
     print("-" * len(header))
